@@ -1,0 +1,9 @@
+originals/
+.env
+.env.*
+!.env.example
+node_modules/
+.vercel/
+__pycache__/
+*.log
+*.zip

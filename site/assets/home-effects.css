@@ -1,0 +1,105 @@
+/* Homepage background, name reveal and social dock. */
+#main.home-has-stars {
+  position: relative;
+  isolation: isolate;
+}
+
+.home-stars {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.home-stars canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.encrypted-segment {
+  white-space: pre-wrap;
+}
+
+.encrypted-char {
+  display: inline-block;
+  color: var(--muted);
+}
+
+.encrypted-char.is-revealed {
+  color: var(--ink);
+}
+
+.social-links.social-dock {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 14px;
+  width: max-content;
+  max-width: 100%;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.social-dock .dock-item {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  width: 54px;
+  min-height: 58px;
+  padding: 6px 3px;
+  border: 0;
+  border-radius: 12px;
+  color: var(--ink);
+  background: transparent;
+  font: inherit;
+  transform: translateY(var(--dock-lift, 0px)) scale(var(--dock-scale, 1));
+  transform-origin: center bottom;
+  transition: transform 140ms ease;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.social-dock .social-logo {
+  width: 24px;
+  height: 24px;
+}
+
+.dock-label {
+  font-size: 10px;
+  line-height: 1.2;
+  font-weight: 550;
+  white-space: nowrap;
+}
+
+.social-dock .dock-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+@media (max-width: 600px) {
+  .social-links.social-dock {
+    margin: 10px 0 0;
+    flex-basis: 100%;
+    width: auto;
+    justify-content: flex-start;
+    gap: 16px;
+    padding: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .social-dock .dock-item {
+    transition: none;
+    transform: none;
+  }
+}

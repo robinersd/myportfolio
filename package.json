@@ -1,0 +1,12 @@
+{
+  "name": "portfolio-workspace",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.9"
+  },
+  "scripts": {
+    "dev": "node --watch --env-file-if-exists=site/.env.local server.mjs",
+    "start": "node --env-file-if-exists=site/.env.local server.mjs"
+  }
+}

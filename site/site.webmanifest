@@ -1,0 +1,10 @@
+{
+  "name": "Robiner B. Dahap Jr. | Portfolio",
+  "short_name": "Robiner Dahap",
+  "description": "Computer Engineering student and full-stack developer portfolio.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#327569",
+  "icons": [{ "src": "/assets/logo.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
