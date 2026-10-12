@@ -27,14 +27,10 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Prepare site for GitHub Pages subpath and SPA
+      - name: Prepare site for GitHub Pages SPA
         run: |
           # Copy index.html to 404.html para gumana ang routing kahit i-refresh ang page
           cp ./site/index.html ./site/404.html
-
-          # Awtomatikong i-adjust ang paths para sa /myportfolio subpath
-          find ./site -type f \( -name "*.html" -o -name "*.js" -o -name "*.css" \) -exec sed -i 's|/assets/|/myportfolio/assets/|g' {} +
-          find ./site -type f \( -name "*.html" -o -name "*.js" \) -exec sed -i 's|/site.webmanifest|/myportfolio/site.webmanifest|g' {} +
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
