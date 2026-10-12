@@ -23,7 +23,7 @@ import {
 import { enableRobinerMotion } from './motion.js?v=chat-56';
 import { enableRobinerProjectDeck } from './project-deck.js?v=card-viewers-60';
 import { enableRobinerProfile } from './profile.js?v=chat-56';
-import { enableRobinerNavigation, basePath } from './navigation.js?v=chat-56';
+import { enableRobinerNavigation, basePath } from './navigation.js?v=v2-fix';
 import { renderPixelGallery, enablePixelGallery } from './pixel-gallery.js?v=chat-56';
 import { enableRobinerSpotify } from './spotify.js?v=wave-play-59';
 
