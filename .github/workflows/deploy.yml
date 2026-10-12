@@ -1,0 +1,47 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Prepare site for GitHub Pages subpath and SPA
+        run: |
+          # Copy index.html to 404.html para gumana ang routing kahit i-refresh ang page
+          cp ./site/index.html ./site/404.html
+
+          # Awtomatikong i-adjust ang paths para sa /myportfolio subpath
+          find ./site -type f \( -name "*.html" -o -name "*.js" -o -name "*.css" \) -exec sed -i 's|/assets/|/myportfolio/assets/|g' {} +
+          find ./site -type f \( -name "*.html" -o -name "*.js" \) -exec sed -i 's|/site.webmanifest|/myportfolio/site.webmanifest|g' {} +
+          find ./site -type f \( -name "*.html" -o -name "*.js" \) -exec sed -i "s|window.location.pathname.replace(/\/$/, '')|window.location.pathname.replace(/^\/myportfolio/, '').replace(/\/$/, '')|g" {} +
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './site'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
