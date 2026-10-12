@@ -76,7 +76,7 @@ export const chatFarewell = "i don't want to waste tokens on that bye.";
 
 // Only send this when the visitor explicitly asks for resume activation help.
 export const resumeClue =
-  'I\'m kidding but nonetheless to view my resume sent "activate the resume" here in the chat';
+  'to view my resume sent "activate the resume" here in the chat';
 
 // Brand logos identify tools; outline icons represent general capabilities.
 export const skillIcons = {
