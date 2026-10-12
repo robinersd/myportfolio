@@ -23,7 +23,7 @@ import {
 import { enableRobinerMotion } from './motion.js?v=chat-56';
 import { enableRobinerProjectDeck } from './project-deck.js?v=card-viewers-60';
 import { enableRobinerProfile } from './profile.js?v=chat-56';
-import { enableRobinerNavigation } from './navigation.js?v=chat-56';
+import { enableRobinerNavigation, basePath } from './navigation.js?v=chat-56';
 import { renderPixelGallery, enablePixelGallery } from './pixel-gallery.js?v=chat-56';
 import { enableRobinerSpotify } from './spotify.js?v=wave-play-59';
 
@@ -105,7 +105,7 @@ function socialDock() {
 
 function animatedSkillsSection() {
   return /* HTML */ `<section id="skills">
-    ${sectionHeader('Skills & tools', '<a class="text-link" href="/tech-stack">View all</a>')}
+    ${sectionHeader('Skills & tools', `<a class="text-link" href="${basePath}/tech-stack">View all</a>`)}
     ${renderStaggeredSkills(profile.skills, skillPreviews, skillIcons, text)}
   </section>`;
 }
@@ -283,7 +283,7 @@ function contactSection() {
     >
     <div class="contact-links">
       ${externalLink(profile.github, 'GitHub')}${externalLink(profile.linkedin, 'LinkedIn')}<a
-        href="${text(profile.resume)}"
+        href="${basePath}/resume"
         >View resume</a
       >
     </div>
@@ -292,7 +292,7 @@ function contactSection() {
 
 function gallerySection() {
   return /* HTML */ `<section id="gallery">
-    ${sectionHeader('Gallery', '<a class="text-link" href="/gallery">View gallery</a>')}
+    ${sectionHeader('Gallery', `<a class="text-link" href="${basePath}/gallery">View gallery</a>`)}
     <p class="muted gallery-intro">
       A few moments from my life, classmates, and hands-on projects.
     </p>
@@ -638,8 +638,8 @@ function homePage() {
       </div>
       <p class="introduction">${text(profile.introduction)}</p>
       <div class="hero-actions">
-        <a class="button primary" href="/projects">Explore projects</a
-        ><a class="button" href="${text(profile.resume)}">View resume</a>
+        <a class="button primary" href="${basePath}/projects">Explore projects</a
+        ><a class="button" href="${basePath}/resume">View resume</a>
         ${socialDock()}
       </div>
     </section>
@@ -688,7 +688,8 @@ function themeSwitch() {
 }
 
 function renderPage({ partial = false } = {}) {
-  const path = window.location.pathname.replace(/\/$/, '') || '/';
+  const rawPath = window.location.pathname.replace(/\/$/, '') || '/';
+  const path = (basePath && rawPath.startsWith(basePath) ? rawPath.slice(basePath.length) : rawPath) || '/';
   const pages = {
     '/': homePage,
     '/projects': () =>
@@ -724,18 +725,19 @@ function renderPage({ partial = false } = {}) {
         ${gallerySection()}`,
     '/resume': resumePage,
   };
-  const content = `${path !== '/' ? '<a class="back-home" href="/">← Back home</a>' : ''}${(
+  const content = `${path !== '/' ? `<a class="back-home" href="${basePath || '/'}">← Back home</a>` : ''}${(
     pages[path] ||
     (() =>
       /* HTML */ `<div class="page-intro">
         <h1>Page not found</h1>
-        <a class="text-link" href="/">Return home ↗</a>
+        <a class="text-link" href="${basePath || '/'}">Return home ↗</a>
       </div>`)
   )()}`;
   if (partial) {
     document.querySelector('#main').innerHTML = content;
     document.querySelectorAll('.nav-links a').forEach((link) => {
-      if (link.getAttribute('href') === path) link.setAttribute('aria-current', 'page');
+      const href = link.getAttribute('href');
+      if (href === `${basePath}${path}` || href === path) link.setAttribute('aria-current', 'page');
       else link.removeAttribute('aria-current');
     });
   } else
@@ -751,7 +753,7 @@ function renderPage({ partial = false } = {}) {
             ]
               .map(
                 ([href, label]) =>
-                  /* HTML */ `<a href="${href}" ${path === href ? 'aria-current="page"' : ''}
+                  /* HTML */ `<a href="${basePath}${href}" ${path === href ? 'aria-current="page"' : ''}
                     >${label}</a
                   >`,
               )
@@ -772,8 +774,8 @@ function renderPage({ partial = false } = {}) {
 }
 
 // Keep old bookmarks working after renaming the section to Projects.
-if (window.location.pathname.replace(/\/$/, '') === '/experience') {
-  window.history.replaceState(null, '', '/projects');
+if (window.location.pathname.replace(/\/$/, '') === `${basePath}/experience`) {
+  window.history.replaceState(null, '', `${basePath}/projects`);
 }
 renderPage();
 

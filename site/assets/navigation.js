@@ -1,3 +1,5 @@
+export const basePath = window.location.pathname.startsWith('/myportfolio') ? '/myportfolio' : '';
+
 // Keep the shell and chatbot mounted while changing the page content.
 export function enableRobinerNavigation({ render, initialize, routes }) {
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -49,10 +51,11 @@ export function enableRobinerNavigation({ render, initialize, routes }) {
     if (!link || link.hasAttribute('download') || (link.target && link.target !== '_self')) return;
     const url = new URL(link.href, window.location.href);
     if (url.origin !== window.location.origin || url.hash) return;
-    const pathname = url.pathname.replace(/\/$/, '') || '/';
-    if (!routes.has(pathname)) return;
+    const rawPath = url.pathname.replace(/\/$/, '') || '/';
+    const routePath = (basePath && rawPath.startsWith(basePath) ? rawPath.slice(basePath.length) : rawPath) || '/';
+    if (!routes.has(routePath)) return;
     event.preventDefault();
-    if (pathname === '/experience') url.pathname = '/projects';
+    if (routePath === '/experience') url.pathname = (basePath || '') + '/projects';
     if (url.pathname === window.location.pathname && url.search === window.location.search) return;
     changePage(url);
   });

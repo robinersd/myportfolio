@@ -35,7 +35,6 @@ jobs:
           # Awtomatikong i-adjust ang paths para sa /myportfolio subpath
           find ./site -type f \( -name "*.html" -o -name "*.js" -o -name "*.css" \) -exec sed -i 's|/assets/|/myportfolio/assets/|g' {} +
           find ./site -type f \( -name "*.html" -o -name "*.js" \) -exec sed -i 's|/site.webmanifest|/myportfolio/site.webmanifest|g' {} +
-          find ./site -type f \( -name "*.html" -o -name "*.js" \) -exec sed -i "s|window.location.pathname.replace(/\/$/, '')|window.location.pathname.replace(/^\/myportfolio/, '').replace(/\/$/, '')|g" {} +
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
