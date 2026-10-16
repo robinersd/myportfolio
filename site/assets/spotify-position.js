@@ -8,6 +8,7 @@ export function enableRobinerSpotifyPosition(dialog) {
     frame = 0,
     suppressDragClick = false;
   const clamp = (value, low, high) => Math.min(Math.max(value, low), Math.max(low, high));
+  const isPhone = () => document.documentElement.clientWidth <= 600;
 
   function bounds() {
     const viewport = window.visualViewport;
@@ -42,6 +43,7 @@ export function enableRobinerSpotifyPosition(dialog) {
     };
   }
   function write(x, y, area = bounds()) {
+    dialog.classList.remove('is-spotify-edge-docked');
     x = clamp(x, area.minX, area.maxX);
     y = clamp(y, area.minY, area.maxY);
     dialog.style.setProperty('--spotify-mini-x', `${Math.round(x)}px`);
@@ -89,6 +91,11 @@ export function enableRobinerSpotifyPosition(dialog) {
   function position() {
     frame = 0;
     if (!visible) return;
+    // Native bottom positioning follows the mobile browser viewport without
+    // chasing page buttons or rewriting pixel coordinates during scrolling.
+    const docked = isPhone() && !saved && !drag?.moved;
+    dialog.classList.toggle('is-spotify-edge-docked', docked);
+    if (docked) return;
     const area = bounds();
     if (drag?.moved) {
       const point = write(
@@ -255,7 +262,13 @@ export function enableRobinerSpotifyPosition(dialog) {
     queue();
   };
   window.addEventListener('resize', resize, { passive: true });
-  window.addEventListener('scroll', queue, { passive: true });
+  window.addEventListener(
+    'scroll',
+    () => {
+      if (!isPhone()) queue();
+    },
+    { passive: true },
+  );
   window.visualViewport?.addEventListener('resize', resize, { passive: true });
   window.visualViewport?.addEventListener('scroll', queue, { passive: true });
   window.addEventListener('blur', () => endDrag());

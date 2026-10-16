@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import vm from 'node:vm';
+import { spotifyQueue } from '../site/assets/data.js';
 
 class Element {
   constructor() {
@@ -80,8 +81,11 @@ class Element {
     this.open = false; /* Native close events are queued, not synchronous. */
   }
   getBoundingClientRect() {
-    const left = parseFloat(this.styles.get('--spotify-mini-x')) || 0;
-    const top = parseFloat(this.styles.get('--spotify-mini-y')) || 0;
+    const docked = this.classList.contains('is-spotify-edge-docked');
+    const left = docked ? 10 : parseFloat(this.styles.get('--spotify-mini-x')) || 0;
+    const top = docked
+      ? (this.viewport.visualViewport?.height || this.viewport.innerHeight) - 44 - 22
+      : parseFloat(this.styles.get('--spotify-mini-y')) || 0;
     return { left, top, right: left + 52, bottom: top + 44, width: 52, height: 44 };
   }
   setPointerCapture(id) {
@@ -104,7 +108,7 @@ async function load(file, env, exportName) {
   return context.result;
 }
 
-test('persistent wave starts the default playlist, pauses/resumes, and reuses the iframe', async () => {
+test('music attempts autoplay, handles blocked playback and advances the requested queue in order', async () => {
   const doc = new Element();
   const win = new Element();
   const dialog = new Element();
@@ -135,9 +139,14 @@ test('persistent wave starts the default playlist, pauses/resumes, and reuses th
   doc.documentElement = new Element();
   doc.createElement = () => new Element();
   doc.head = new Element();
-  doc.head.append = () => win.onSpotifyIframeApiReady(api);
+  let duplicateBootstraps = 0;
+  doc.head.append = () => {
+    duplicateBootstraps++;
+    win.onSpotifyIframeApiReady(api);
+  };
   win.matchMedia = () => Object.assign(new Element(), { matches: true });
   const events = new Map();
+  const entities = [];
   const timers = new Map();
   let timerId = 0;
   let creates = 0,
@@ -152,16 +161,18 @@ test('persistent wave starts the default playlist, pauses/resumes, and reuses th
     play: () => plays++,
     resume: () => resumes++,
     destroy: () => destroys++,
-    loadEntity() {},
+    loadEntity: (uri) => entities.push(uri),
   };
   const frame = new Element();
   dialog.querySelector('.spotify-embed').nodes.set('iframe', frame);
   const api = {
     createController: (_mount, _options, callback) => {
       creates++;
+      entities.push(_options.uri);
       callback(controller);
     },
   };
+  win.robinerSpotifyApiReady = Promise.resolve(api);
   const enable = await load(
     'spotify.js',
     {
@@ -176,28 +187,46 @@ test('persistent wave starts the default playlist, pauses/resumes, and reuses th
     },
     'enableRobinerSpotify',
   );
-  enable([
-    { id: 'a'.repeat(22), title: 'My playlist' },
-    { id: 'b'.repeat(22), title: 'Other playlist' },
-  ]);
+  enable(
+    [
+      { id: 'a'.repeat(22), title: 'My playlist' },
+      { id: 'b'.repeat(22), title: 'Other playlist' },
+    ],
+    spotifyQueue,
+  );
   const open = () => doc.emit('click', { target: { closest: () => new Element() } });
   assert.equal(dialog.open, true, 'Wave is visible on first page load');
   assert.equal(dialog.modal, false);
   assert.equal(shown, 1);
-  assert.equal(resumes, 0, 'Preparing a playlist must not autoplay');
+  assert.equal(resumes, 0, 'Playback waits for the Spotify controller');
   assert.equal(plays, 0);
-  await toggle.emit('click');
+  await new Promise((resolve) => setImmediate(resolve));
   assert.equal(creates, 1);
-  assert.equal(resumes, 0, 'An early tap waits for Spotify readiness');
-  await toggle.emit('click');
+  assert.equal(
+    duplicateBootstraps,
+    0,
+    'The player reuses the early API request without another bootstrap',
+  );
+  assert.equal(entities[0], 'spotify:track:3QF5RsWzK1lCvf2o2cY65P');
+  assert.equal(
+    dialog.querySelector('.spotify-external').href,
+    'https://open.spotify.com/track/3QF5RsWzK1lCvf2o2cY65P',
+  );
+  assert.equal(frame.title, 'Spotify track: Dear Reader — Taylor Swift');
   events.get('ready')();
-  assert.equal(resumes, 0, 'A second early tap cancels the request');
-  await toggle.emit('click');
-  assert.equal(plays, 1, 'First wave tap sends PLAY to initialize the default playlist');
+  assert.equal(plays, 1, 'The initial ready event attempts autoplay without a tap');
+  events.get('ready')();
+  assert.equal(plays, 1, 'Repeated ready events cannot duplicate autoplay');
   assert.equal(resumes, 0, 'RESUME is only used after playback has actually started');
   assert.equal(dialog.modal, false);
   const blocked = [...timers.values()].find((timer) => timer.delay === 6000);
   blocked.callback();
+  assert.equal(toggle.attrs.get('aria-label'), 'Play Spotify music');
+  assert.equal(dialog.modal, false, 'Blocked autoplay must not force the chooser open');
+  await toggle.emit('click');
+  assert.equal(plays, 2, 'A real wave tap retries blocked autoplay directly');
+  const manualBlocked = [...timers.values()].find((timer) => timer.delay === 6000);
+  manualBlocked.callback();
   assert.equal(toggle.attrs.get('aria-label'), 'Open Spotify playback controls');
   await toggle.emit('click');
   assert.equal(dialog.modal, true, 'Browser-restricted playback has usable native controls');
@@ -213,11 +242,40 @@ test('persistent wave starts the default playlist, pauses/resumes, and reuses th
   assert.equal(resumes, 1, 'A paused playlist resumes without restarting');
   events.get('playback_update')({ data: { isPaused: false, isBuffering: false } });
   assert.equal(mini.classList.contains('is-playing'), true);
+  const update = (id, position, duration, isPaused = false, isBuffering = false) =>
+    events.get('playback_update')({
+      data: { playingURI: `spotify:track:${id}`, position, duration, isPaused, isBuffering },
+    });
+  const dear = spotifyQueue[0].id,
+    drinking = spotifyQueue[1].id,
+    thirteen = spotifyQueue[2].id;
+  update(dear, 224950, 225000);
+  await toggle.emit('click');
+  update(dear, 224950, 225000, true);
+  assert.equal(entities.length, 1, 'Manually pausing near the end must not skip the song');
+  await toggle.emit('click');
+  update(dear, 225000, 225000, false, true);
+  assert.equal(entities.length, 1, 'Buffering must not count as completion');
+  update(dear, 225000, 225000, true);
+  assert.equal(entities[1], `spotify:track:${drinking}`);
+  assert.equal(plays, 3, 'I Quit Drinking starts after Dear Reader');
+  update(dear, 225000, 225000, true);
+  assert.equal(entities.length, 2, 'Duplicate completion events must not skip the next track');
+  events.get('playback_started')({ data: { playingURI: `spotify:track:${drinking}` } });
+  update(drinking, 170800, 171000);
+  update(drinking, 0, 171000, true);
+  assert.equal(entities[2], `spotify:track:${thirteen}`, 'An end-position reset advances to 13');
+  assert.equal(plays, 4);
+  events.get('playback_started')({ data: { playingURI: `spotify:track:${thirteen}` } });
+  update(thirteen, 234000, 234000, true);
+  update(thirteen, 234000, 234000, true);
+  assert.equal(entities.length, 3, 'The queue stops after 13 without an automatic loop');
   await open();
   events.get('playback_started')();
   assert.equal(dialog.modal, true, 'Later tracks must not dismiss a deliberately reopened player');
   await playlists[1].emit('click');
   assert.equal(creates, 1, 'Changing playlists reuses the controller');
+  assert.equal(entities[3], `spotify:playlist:${'b'.repeat(22)}`);
   await dialog.querySelector('.spotify-close').emit('click');
   assert.equal(dialog.open, true, 'Wave remains visible even for an unplayed playlist');
   assert.equal(dialog.modal, false);
@@ -230,10 +288,16 @@ test('persistent wave starts the default playlist, pauses/resumes, and reuses th
   assert.equal(dialog.modal, false);
   assert.equal(destroys, 1);
   await toggle.emit('click');
+  await new Promise((resolve) => setImmediate(resolve));
   events.get('ready')();
   assert.equal(creates, 2, 'Wave can start again after stopping');
-  assert.equal(plays, 2, 'A fresh controller starts with PLAY again');
-  assert.equal(resumes, 1);
+  assert.equal(plays, 5, 'A fresh controller starts with PLAY again');
+  assert.equal(resumes, 2);
+  assert.equal(
+    entities[4],
+    'spotify:track:3QF5RsWzK1lCvf2o2cY65P',
+    'Stopping and restarting restores Dear Reader',
+  );
 });
 
 test('wave drag clamps to desktop/phone bounds and never becomes a playback click', async () => {
@@ -251,6 +315,7 @@ test('wave drag clamps to desktop/phone bounds and never becomes a playback clic
     doc.querySelector = () => null;
     win.innerWidth = doc.documentElement.clientWidth;
     win.innerHeight = phone ? 720 : 900;
+    dialog.viewport = win;
     const raf = new Map();
     let id = 0;
     const enable = await load(
@@ -317,6 +382,103 @@ test('wave drag clamps to desktop/phone bounds and never becomes a playback clic
     position.hide();
     assert.equal(doc.documentElement.classList.contains('spotify-mini-active'), false);
   }
+});
+
+test('phone wave stays at the viewport edge while sections and browser chrome scroll', async () => {
+  const doc = new Element(),
+    win = new Element(),
+    dialog = new Element();
+  const mini = new Element(),
+    toggle = new Element(),
+    main = new Element();
+  dialog.nodes.set('.spotify-mini', mini);
+  mini.nodes.set('.spotify-wave-toggle', toggle);
+  win.innerWidth = 360;
+  win.innerHeight = 720;
+  win.visualViewport = Object.assign(new Element(), {
+    width: 360,
+    height: 720,
+    offsetTop: 0,
+    offsetLeft: 0,
+  });
+  dialog.viewport = win;
+  doc.documentElement = Object.assign(new Element(), { clientWidth: 360 });
+  doc.querySelector = (selector) => (selector === '#main' ? main : null);
+  let scans = 0,
+    controlTop = 0;
+  const control = new Element();
+  control.getBoundingClientRect = () => ({
+    left: 0,
+    right: 360,
+    top: controlTop,
+    bottom: controlTop + 500,
+    width: 360,
+    height: 500,
+  });
+  main.querySelectorAll = () => {
+    scans++;
+    return [control];
+  };
+  const raf = new Map();
+  let id = 0;
+  const flush = () => {
+    const tasks = [...raf.values()];
+    raf.clear();
+    tasks.forEach((fn) => fn());
+  };
+  let routeChanged;
+  const enable = await load(
+    'spotify-position.js',
+    {
+      document: doc,
+      window: win,
+      requestAnimationFrame: (fn) => {
+        raf.set(++id, fn);
+        return id;
+      },
+      cancelAnimationFrame: (key) => raf.delete(key),
+      getComputedStyle: () => ({ pointerEvents: 'auto' }),
+      MutationObserver: class {
+        constructor(callback) {
+          routeChanged = callback;
+        }
+        observe() {}
+      },
+    },
+    'enableRobinerSpotifyPosition',
+  );
+  enable(dialog).show();
+  const initial = dialog.getBoundingClientRect();
+  for (const top of [620, 500, 300, 0, -500, 300, 620]) {
+    controlTop = top;
+    await win.emit('scroll');
+    assert.equal(raf.size, 0, 'Page scrolling must not schedule mobile position rewrites');
+    await win.visualViewport.emit('scroll');
+    flush();
+    assert.equal(dialog.getBoundingClientRect().top, initial.top);
+    assert.equal(dialog.getBoundingClientRect().left, 10);
+  }
+  win.visualViewport.height = 660;
+  await win.visualViewport.emit('resize');
+  flush();
+  assert.equal(
+    dialog.getBoundingClientRect().bottom,
+    638,
+    'Native bottom anchoring follows the visible viewport',
+  );
+  routeChanged();
+  flush();
+  assert.equal(dialog.classList.contains('is-spotify-edge-docked'), true);
+  assert.equal(
+    dialog.styles.has('--spotify-mini-y'),
+    false,
+    'Mobile docking does not write content-dependent pixel coordinates',
+  );
+  assert.equal(
+    scans,
+    0,
+    'Projects, skills, certificate and email controls must not push the mobile wave away',
+  );
 });
 
 test('floating wave has no artwork/box and explicitly contrasts with both themes', async () => {

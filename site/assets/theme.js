@@ -2,7 +2,6 @@
 export function enableRobinerTheme() {
   const root = document.documentElement;
   const button = document.querySelector('#theme-toggle');
-  const colors = window.matchMedia('(prefers-color-scheme: dark)');
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
   const lifecycle = new AbortController();
   let transition = null;
@@ -16,7 +15,7 @@ export function enableRobinerTheme() {
       return null;
     }
   };
-  let desired = saved() === 'dark' || (!saved() && colors.matches) ? 'dark' : 'light';
+  let desired = saved() === 'light' ? 'light' : 'dark';
 
   function apply(theme, fade = false) {
     clearTimeout(fallbackTimer);
@@ -79,17 +78,6 @@ export function enableRobinerTheme() {
       } catch {
         /* Session-only theme. */
       }
-      if (busy) transition?.skipTransition();
-      else reveal();
-    },
-    { signal: lifecycle.signal },
-  );
-  colors.addEventListener(
-    'change',
-    (event) => {
-      if (saved()) return;
-      desired = event.matches ? 'dark' : 'light';
-      origin = null;
       if (busy) transition?.skipTransition();
       else reveal();
     },

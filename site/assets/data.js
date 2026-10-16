@@ -7,10 +7,18 @@ export const profile = {
   email: 'dahaprobiner@gmail.com',
   github: 'https://github.com/robinersd',
   linkedin: 'https://www.linkedin.com/in/dahaprobiner',
-  photo: '/assets/images/profile-light.jpg',
   defaultPhoto: '/assets/images/profile-rest.jpg',
-  darkPhoto: '/assets/images/profile-dark.jpg',
-  alternatePhoto: '/assets/images/profile-hand.jpg',
+  gazePhotos: {
+    up: '/assets/images/profile-gaze/up.webp?v=profile-cutout-65',
+    'up-right': '/assets/images/profile-gaze/up-right.webp?v=profile-cutout-65',
+    right: '/assets/images/profile-gaze/right.webp?v=profile-cutout-65',
+    'up-left': '/assets/images/profile-gaze/up-left.webp?v=profile-cutout-65',
+    left: '/assets/images/profile-gaze/left.webp?v=profile-cutout-65',
+    'down-right': '/assets/images/profile-gaze/down-right.webp?v=profile-cutout-65',
+    'down-left': '/assets/images/profile-gaze/down-left.webp?v=profile-cutout-65',
+    down: '/assets/images/profile-gaze/down.webp?v=profile-cutout-65',
+    center: '/assets/images/profile-gaze/center.webp?v=profile-cutout-65',
+  },
   resume: '/resume',
   introduction:
     'I build web applications and document the systems behind them. I’m a Computer Engineering student at ICCT with hands-on project work in full-stack development, embedded systems, and system analysis.',
@@ -20,10 +28,13 @@ export const profile = {
     'TypeScript',
     'Codex',
     'JavaScript',
+    'Node.js',
     'HTML',
     'CSS',
     'Antigravity',
     'Tailwind CSS',
+    'Supabase',
+    'Vercel',
     'Git',
     'GitHub',
     'Embedded Systems',
@@ -48,6 +59,27 @@ export const profile = {
     'Willingness to Learn',
   ],
 };
+
+// Default wave selection is independent of the visitor's playlist choices.
+export const spotifyDefaultTrack = Object.freeze({
+  type: 'track',
+  id: '3QF5RsWzK1lCvf2o2cY65P',
+  title: 'Dear Reader — Taylor Swift',
+});
+
+export const spotifyQueue = Object.freeze([
+  spotifyDefaultTrack,
+  Object.freeze({
+    type: 'track',
+    id: '6OcCk1dbAb7XNHsC098oEM',
+    title: 'I Quit Drinking — Kelsea Ballerini & LANY',
+  }),
+  Object.freeze({
+    type: 'track',
+    id: '0WOvSEVpUGkNufX0w0M06F',
+    title: '13 — LANY',
+  }),
+]);
 
 // Public Spotify playlists. Update these titles/covers if you change them in Spotify.
 export const spotifyPlaylists = [
@@ -75,14 +107,15 @@ export const chatIntro = [
 export const chatFarewell = "i don't want to waste tokens on that bye.";
 
 // Only send this when the visitor explicitly asks for resume activation help.
-export const resumeClue =
-  'to view my resume sent "activate the resume" here in the chat';
+export const resumeClue = 'to view my resume sent "activate the resume" here in the chat';
 
 // Brand logos identify tools; outline icons represent general capabilities.
 export const skillIcons = {
   TypeScript: 'typescript',
   React: 'react',
   JavaScript: 'javascript',
+  'Node.js': 'nodejs',
+  Vercel: 'vercel',
   HTML: 'html5',
   CSS: 'css3',
   'Tailwind CSS': 'tailwindcss',
@@ -258,6 +291,21 @@ const skillPicture = (name, caption, alt) => ({
   alt,
 });
 export const skillPreviews = {
+  Supabase: {
+    image: '/assets/images/skills/supabase.webp',
+    caption: 'Database tables and backend services · Tool illustration',
+    alt: 'Illustration of a developer using a Supabase-style database table editor and schema panel',
+  },
+  'Node.js': {
+    image: '/assets/images/skills/nodejs.webp',
+    caption: 'JavaScript server runtime · Code illustration',
+    alt: 'Illustration of a developer writing a Node.js HTTP server with a local terminal',
+  },
+  Vercel: {
+    image: '/assets/images/skills/vercel.webp',
+    caption: 'Web deployment workflow · Tool illustration',
+    alt: 'Illustration of a developer viewing a successful production deployment in a Vercel-style dashboard',
+  },
   Codex: {
     image: '/assets/images/skills/codex.png',
     caption: 'AI-assisted coding workflow · Tool illustration',

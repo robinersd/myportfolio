@@ -1,5 +1,5 @@
 import { enableRobinerSkillPreview } from './skill-preview.js?v=chat-56';
-import { enableRobinerTheme } from './theme.js?v=chat-56';
+import { enableRobinerTheme } from './theme.js?v=theme-queue-62';
 import { renderStaggeredSkills, enableStaggeredSkills } from './staggered-skills.js?v=chat-56';
 import { enableRobinerChat } from './chat.js?v=chat-56';
 import { enableSocialDock } from './social-dock.js?v=chat-56';
@@ -18,14 +18,15 @@ import {
   skillIcons,
   gallery,
   spotifyPlaylists,
+  spotifyQueue,
   skillPreviews,
-} from './data.js?v=chat-56';
+} from './data.js?v=skills-mobile-71';
 import { enableRobinerMotion } from './motion.js?v=chat-56';
 import { enableRobinerProjectDeck } from './project-deck.js?v=card-viewers-60';
-import { enableRobinerProfile } from './profile.js?v=chat-56';
+import { enableRobinerProfile } from './profile.js?v=profile-cutout-65';
 import { enableRobinerNavigation, basePath } from './navigation.js?v=v2-fix';
 import { renderPixelGallery, enablePixelGallery } from './pixel-gallery.js?v=chat-56';
-import { enableRobinerSpotify } from './spotify.js?v=wave-play-59';
+import { enableRobinerSpotify } from './spotify.js?v=music-profile-63';
 
 // Escape content before inserting it into the page.
 function escapeHtml(value) {
@@ -63,6 +64,15 @@ function profileName() {
   const lastSpace = profile.name.lastIndexOf(' ');
   const prefix = lastSpace < 0 ? '' : profile.name.slice(0, lastSpace + 1);
   const ending = profile.name.slice(lastSpace + 1);
+  const leading = prefix
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(
+      (word) =>
+        `<span class="name-word"><span class="encrypted-segment" data-encrypted-text="${text(word)}" aria-hidden="true">${text(word)}</span></span>`,
+    )
+    .join(' ');
   const badge = /* HTML */ `<svg
     class="profile-badge"
     viewBox="0 0 24 24"
@@ -83,7 +93,7 @@ function profileName() {
       stroke-linejoin="round"
     />
   </svg>`;
-  return `<span class="encrypted-segment" data-encrypted-text="${text(prefix)}" aria-hidden="true">${text(prefix)}</span><span class="name-ending"><span class="encrypted-segment" data-encrypted-text="${text(ending)}" aria-hidden="true">${text(ending)}</span>${badge}</span>`;
+  return `${leading}${leading ? ' ' : ''}<span class="name-ending"><span class="encrypted-segment" data-encrypted-text="${text(ending)}" aria-hidden="true">${text(ending)}</span>${badge}</span>`;
 }
 
 function socialDock() {
@@ -111,16 +121,14 @@ function animatedSkillsSection() {
 }
 
 function profilePortrait() {
-  const photos = [
-    ['default', profile.defaultPhoto],
-    ['light', profile.photo],
-    ['dark', profile.darkPhoto],
-    ['alternate', profile.alternatePhoto],
-  ];
+  const photos = [['default', profile.defaultPhoto], ...Object.entries(profile.gazePhotos)];
   const portraits = photos
     .map(([pose, image]) => {
       const layer = pose === 'default' ? 'default' : 'active';
-      const loading = pose === 'default' ? 'fetchpriority="high"' : 'loading="eager"';
+      const loading =
+        pose === 'default'
+          ? 'fetchpriority="high"'
+          : 'loading="eager" decoding="async" fetchpriority="low"';
       return /* HTML */ `<img
         class="profile-photo pixelated-image-card__${layer}"
         data-profile-photo="${pose}"
@@ -142,10 +150,10 @@ function profilePortrait() {
       ${portraits}
       <canvas class="pixelated-image-card__pixels" aria-hidden="true"></canvas></button
     ><span id="profile-photo-help" class="visually-hidden"
-      >The artwork is the default in both themes. Hover or tap to reveal the sunglasses portrait in
-      dark mode or the light portrait in light mode. Moving away returns to the artwork. A phone tap
-      completes the reveal and then returns automatically. Double click while hovering, or double
-      tap, to reveal the raised-hand portrait.</span
+      >Move your mouse, or tap and drag anywhere on the page, to make the portrait look toward you.
+      The artwork stays until you interact. Only the artwork reveal uses pixels; looking between
+      directions switches instantly. With this photo focused, use the arrow keys to look around,
+      Enter for center, or Escape for the artwork.</span
     >`;
 }
 
@@ -627,16 +635,18 @@ function homePage() {
   return /* HTML */ `${renderHomeStars()}
     <section class="hero">
       <div class="hero-top">
-        <div>
-          <span class="eyebrow location"
-            ><span class="status-dot"></span>${text(profile.location)}</span
-          >
-          <h1 data-encrypted-name aria-label="${text(profile.name)}">${profileName()}</h1>
-          <p class="job-title">${text(profile.title)}</p>
-        </div>
         ${profilePortrait()}
+        <div class="hero-copy">
+          <div class="hero-heading">
+            <span class="eyebrow location"
+              ><span class="status-dot"></span>${text(profile.location)}</span
+            >
+            <h1 data-encrypted-name aria-label="${text(profile.name)}">${profileName()}</h1>
+            <p class="job-title">${text(profile.title)}</p>
+          </div>
+          <p class="introduction">${text(profile.introduction)}</p>
+        </div>
       </div>
-      <p class="introduction">${text(profile.introduction)}</p>
       <div class="hero-actions">
         <a class="button primary" href="${basePath}/projects">Explore projects</a
         ><a class="button" href="${basePath}/resume">View resume</a>
@@ -689,7 +699,8 @@ function themeSwitch() {
 
 function renderPage({ partial = false } = {}) {
   const rawPath = window.location.pathname.replace(/\/$/, '') || '/';
-  const path = (basePath && rawPath.startsWith(basePath) ? rawPath.slice(basePath.length) : rawPath) || '/';
+  const path =
+    (basePath && rawPath.startsWith(basePath) ? rawPath.slice(basePath.length) : rawPath) || '/';
   const pages = {
     '/': homePage,
     '/projects': () =>
@@ -753,7 +764,9 @@ function renderPage({ partial = false } = {}) {
             ]
               .map(
                 ([href, label]) =>
-                  /* HTML */ `<a href="${basePath}${href}" ${path === href ? 'aria-current="page"' : ''}
+                  /* HTML */ `<a
+                    href="${basePath}${href}"
+                    ${path === href ? 'aria-current="page"' : ''}
                     >${label}</a
                   >`,
               )
@@ -778,6 +791,8 @@ if (window.location.pathname.replace(/\/$/, '') === `${basePath}/experience`) {
   window.history.replaceState(null, '', `${basePath}/projects`);
 }
 renderPage();
+// The persistent player gets first access to the API already loading in <head>.
+enableRobinerSpotify(spotifyPlaylists, spotifyQueue);
 
 // Native dialog provides focus trapping, Escape-to-close, and focus restoration.
 const viewer = document.querySelector('#photo-viewer');
@@ -870,7 +885,6 @@ function initializeMain({ pageEntry = false } = {}) {
 
 enableRobinerChat();
 enableCertificateViewer(award);
-enableRobinerSpotify(spotifyPlaylists);
 enableRobinerSkillPreview(skillPreviews, skillIcons);
 initializeMain();
 enableRobinerNavigation({
